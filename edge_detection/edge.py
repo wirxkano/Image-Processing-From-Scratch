@@ -186,18 +186,18 @@ def non_maximum_suppression(G, theta):
     for i in range(1, H - 1):
         for j in range(1, W - 1):
             direction = theta[i, j]
-            before, after = 0, 0
+            value = 0.0
             if direction in [0, 180]:
-                before, after = G[i, j - 1], G[i, j + 1]
+                value = max(G[i, j - 1], G[i, j + 1])
             elif direction in [45, 225]:
-                before, after = G[i - 1, j + 1], G[i + 1, j - 1]
+                value = max(G[i - 1, j - 1], G[i + 1, j + 1])
             elif direction in [90, 270]:
-                before, after = G[i - 1, j], G[i + 1, j]
+                value = max(G[i - 1, j], G[i + 1, j])
             elif direction in [135, 315]:
-                before, after = G[i - 1, j - 1], G[i + 1, j + 1]
+                value = max(G[i + 1, j - 1], G[i - 1, j + 1])
 
-            out[i, j] = G[i, j] if G[i, j] >= before and G[i, j] >= after else 0
-
+            out[i, j] = G[i, j] if G[i, j] >= value else 0
+    G = np.multiply(G, 255.0 / G.max())
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ### END YOUR CODE
 
@@ -227,7 +227,7 @@ def double_thresholding(img, high, low):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     strong_edges = img >= high
-    weak_edges = (img >= low) & (img < high)
+    weak_edges = (img > low) & (img <= high)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ### END YOUR CODE
@@ -282,19 +282,26 @@ def canny(img, kernel_size=5, sigma=1.4, high=20, low=15):
     G, theta = gradient(smoothed)
     nms_result = non_maximum_suppression(G, theta)
     strong_edges, weak_edges = double_thresholding(nms_result, high, low)
-    H, W = img.shape
-    edge = np.zeros((H, W), dtype=bool)
-    edge[strong_edges] = True
+    strong_x, strong_y = np.where(strong_edges)
+    weak_x, weak_y = np.where(weak_edges)
 
-    for i in range(1, H - 1):
-        for j in range(1, W - 1):
-            if weak_edges[i, j] and edge[i, j] == False:
-                neighbors = get_neighbors(i, j, H, W)
-                for ni, nj in neighbors:
-                    if edge[ni, nj] == True:
-                        edge[i, j] = True
-                        break
+    strong, weak = 255, 50
+    edge = np.zeros(img.shape)
+    edge[strong_x, strong_y] = strong
+    edge[weak_x, weak_y] = weak
 
+    while len(strong_x):
+        x, y = strong_x[0], strong_y[0]
+        strong_x = np.delete(strong_x, 0)
+        strong_y = np.delete(strong_y, 0)
+        neighbors = get_neighbors(x, y, img.shape[0], img.shape[1])
+        for i, j in neighbors:
+            if edge[i, j] == weak:
+                edge[i, j] = strong
+                strong_x = np.append(strong_x, i)
+                strong_y = np.append(strong_y, j)
+    edge[edge != strong] = 0
+    edge = edge.astype(bool)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ### END YOUR CODE
 
@@ -340,13 +347,10 @@ def hough_transform(img):
     for i, theta in enumerate(thetas):
         for j in range(len(xs)):
             x, y = xs[j], ys[j]
-            # Calculate rho for this (x,y) point and theta
             rho = x * cos_t[i] + y * sin_t[i]
 
-            # Find the closest rho index
             rho_idx = np.argmin(np.abs(rhos - rho))
 
-            # Increment the accumulator
             accumulator[rho_idx, i] += 1
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****

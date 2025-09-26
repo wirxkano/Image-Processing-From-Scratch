@@ -9,7 +9,6 @@ Instead of relying heavily on OpenCV or other libraries, I focus on understandin
 - Learn how digital images are represented and manipulated.
 - Implement basic image processing operations **step by step**.
 - Compare my implementations with trusted libraries like `scipy` and `opencv` to verify correctness.
-- Build intuition about filtering, convolution, correlation, and nonlinear operations.
 
 ---
 
